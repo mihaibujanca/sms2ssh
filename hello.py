@@ -3,6 +3,7 @@ import twilio.twiml
 import pxssh
 import json
 import threading
+import Queue
 
 
 class Sms2Ssh:
@@ -23,9 +24,9 @@ class Sms2Ssh:
     def login(self):
         if not self.connection.login(self.host, self.username,
                 self.password):
-            return 'SSH session failed on login.'
+            return False
         else:
-            return 'SSH session login successful'
+            return True
 
     # logs out and destroys the current object
 
@@ -45,26 +46,46 @@ class Sms2Ssh:
     def __del__(self):
         pass
 
+def run(queue, username, host, password):
+    s = Sms2Ssh(username, host, password)
+    if s.login() is True:
+        while(1):
+            message = queue.get()
+            if message == 'logout':
+                return False
+            if message is not None:
+                s.sendMessage(message)
+    else:
+        return 'Could not connect!'                
+
+
+
+
 app = Flask(__name__)
-blah = {}
+
+threads{}
+queues{}
 @app.route('/', methods=['GET', 'POST'])
 def index():
     phonenumber = request.values.get('From', None)
-    if not blah.has_key(phonenumber):
+    if not threads[phonenumber]
+        #Create queue;
+        queues[phonenumber] = Queue()
+        # Create thread;
+        threads[phonenumber] = Thread(target=run, args= (queue[phonenumber], username, host, password))
+        
+        #Get details of phonenumber
         body = request.values.get('Body', None)
         action = json.loads(body)
-# TODO: validate inputs
+        # TODO: validate inputs
         host = action['host']
         username = action['username']
         password = action['password'] #long live plain text passwords
-        session['connection'] = Sms2Ssh(host,username,password)
-        session['connection'].login()
-        blah[phonenumber] = session  
-        return "Session value set."
+        #Login the user
+        threads[phonenumber].start()
     else:
-        message = request.values.get('Body', None)
-        #TODO: logout LENE + MANCARE
-        blah[phonenumber]['connection'].sendMessage(message)
+        message = request.values.get('Body', None)    
+        queues[phonenumber].put(message)
 
 
 # set the secret key.  keep this really secret:
