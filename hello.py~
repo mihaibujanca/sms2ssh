@@ -3,6 +3,8 @@ import twilio.twiml
 import pxssh
 import json
 import threading
+from threading import Thread
+from Queue import Queue
 
 
 class Sms2Ssh:
@@ -23,9 +25,9 @@ class Sms2Ssh:
     def login(self):
         if not self.connection.login(self.host, self.username,
                 self.password):
-            return 'SSH session failed on login.'
+            return False
         else:
-            return 'SSH session login successful'
+            return True
 
     # logs out and destroys the current object
 
@@ -45,27 +47,56 @@ class Sms2Ssh:
     def __del__(self):
         pass
 
+def run(queue, username, host, password):
+    s = Sms2Ssh("kilburn.cs.man.ac.uk", "mbax4hb2", "Mike_UK_2014")
+    if s.login() is True:
+        print "You have successfullyyy logggged inn"
+        while(1):
+            message = queue.get()
+            if message == 'logout':
+                return "You have been logged out"
+            if message is not None:
+                response = s.sendMessage(message)
+                print response
+                #resp = twilio.twiml.Response()
+                #resp.message(response)
+                #return str(resp)
+                return "wth"
+    else:
+        return 'Could not connect!'                
+
+
+
+
 app = Flask(__name__)
-blah = {}
+
+threads = {}
+queues = {}
 @app.route('/', methods=['GET', 'POST'])
 def index():
     phonenumber = request.values.get('From', None)
-    if not blah.has_key(phonenumber):
+    if not phonenumber in threads.keys():
+        #Get details of phonenumber
         body = request.values.get('Body', None)
         action = json.loads(body)
-# TODO: validate inputs
+        # TODO: validate inputs
         host = action['host']
         username = action['username']
         password = action['password'] #long live plain text passwords
-        session['connection'] = Sms2Ssh(host,username,password)
-        session['connection'].login()
-        blah[phonenumber] = session  
-        return "Session value set."
+        print host
+        print username
+        print password
+        #Create queue;
+        queues[phonenumber] = Queue()
+        # Create thread;
+        threads[phonenumber] = Thread(target=run, args= (queues[phonenumber], username, host, password))
+        #Login the user
+        threads[phonenumber].start()
+        return "Hello, Customer"
     else:
-        message = request.values.get('Body', None)
-        #TODO: logout LENE + MANCARE
-        blah[phonenumber]['connection'].sendMessage(message)
-
+        message = request.values.get('Body', None)    
+        queues[phonenumber].put(message)
+        return "Thank you, customer"
 
 # set the secret key.  keep this really secret:
 app.secret_key = 'A0Zr98j/3yX R~XHH!jmN]LWX/,?RT'

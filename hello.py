@@ -3,7 +3,8 @@ import twilio.twiml
 import pxssh
 import json
 import threading
-import Queue
+from threading import Thread
+from Queue import Queue
 
 
 class Sms2Ssh:
@@ -47,33 +48,32 @@ class Sms2Ssh:
         pass
 
 def run(queue, username, host, password):
-    s = Sms2Ssh(username, host, password)
+    s = Sms2Ssh("kilburn.cs.man.ac.uk", "mbax4hb2", "Mike_UK_2014")
     if s.login() is True:
+        print "You have successfullyyy logggged inn"
         while(1):
             message = queue.get()
             if message == 'logout':
-                return False
+                return "You have been logged out"
             if message is not None:
-                s.sendMessage(message)
+                response = s.sendMessage(message)
+                print response
+                resp = twilio.twiml.Response()
+                resp.message(response)
+                return str(resp)
+                return "wth"
     else:
         return 'Could not connect!'                
 
 
-
-
 app = Flask(__name__)
 
-threads{}
-queues{}
+threads = {}
+queues = {}
 @app.route('/', methods=['GET', 'POST'])
 def index():
     phonenumber = request.values.get('From', None)
-    if not threads[phonenumber]
-        #Create queue;
-        queues[phonenumber] = Queue()
-        # Create thread;
-        threads[phonenumber] = Thread(target=run, args= (queue[phonenumber], username, host, password))
-        
+    if not phonenumber in threads.keys():
         #Get details of phonenumber
         body = request.values.get('Body', None)
         action = json.loads(body)
@@ -81,12 +81,20 @@ def index():
         host = action['host']
         username = action['username']
         password = action['password'] #long live plain text passwords
+        print host
+        print username
+        print password
+        #Create queue;
+        queues[phonenumber] = Queue()
+        # Create thread;
+        threads[phonenumber] = Thread(target=run, args= (queues[phonenumber], username, host, password))
         #Login the user
         threads[phonenumber].start()
+        return "Hello, Customer"
     else:
         message = request.values.get('Body', None)    
         queues[phonenumber].put(message)
-
+        return "Thank you, customer"
 
 # set the secret key.  keep this really secret:
 app.secret_key = 'A0Zr98j/3yX R~XHH!jmN]LWX/,?RT'
