@@ -1,7 +1,8 @@
-from flask import Flask, request, redirect
+from flask import Flask, session, redirect, url_for, escape, request
 import twilio.twiml
 import pxssh
 import json
+import threading
 
 
 class Sms2Ssh:
@@ -18,11 +19,6 @@ class Sms2Ssh:
         self.password = password
         self.connection = pxssh.pxssh()
         self.__isLoggedIn = 1
-
-    __isLoggedIn = 0
-
-    def isLoggedIn(self):
-        return self.__isLoggedIn
 
     def login(self):
         if not self.connection.login(self.host, self.username,
@@ -49,80 +45,29 @@ class Sms2Ssh:
     def __del__(self):
         pass
 
-
-class YourClass:
-
-    def __init__(self):
-        self.numbers = {}
-
-    def newConnection(
-        self,
-        number,
-        host,
-        username,
-        password,
-        ):
-
-        self.numbers[number] = Sms2Ssh(host, username, password)
-        return self.numbers[number].login()
-
-    def logout(self, number):
-        self.numbers[number].logout()
-        del self.numbers[number]
-
-    def sendMessage(self, number, message):
-        if self.numbers[number].isLoggedIn:
-            return self.numbers[number].sendMessage(message)
-
-
-newcl = YourClass()
-
-
-from flask import Flask, session, redirect, url_for, escape, request
-
 app = Flask(__name__)
-
-@app.route('/')
+blah = {}
+@app.route('/', methods=['GET', 'POST'])
 def index():
-    if not session.has_key('phonenumber'):
-        session['phonenumber'] = 'Save in session'    
+    phonenumber = request.values.get('From', None)
+    if not blah.has_key(phonenumber):
+        body = request.values.get('Body', None)
+        action = json.loads(body)
+# TODO: validate inputs
+        host = action['host']
+        username = action['username']
+        password = action['password'] #long live plain text passwords
+        session['connection'] = Sms2Ssh(host,username,password)
+        session['connection'].login()
+        blah[phonenumber] = session  
         return "Session value set."
     else:
-        return session['phonenumber']
+        message = request.values.get('Body', None)
+        #TODO: logout LENE + MANCARE
+        blah[phonenumber]['connection'].sendMessage(message)
 
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    if request.method == 'POST':
-        session['phonenumber'] = request.form['phonenumber']
-        return redirect(url_for('index'))
-
-@app.route('/logout')
-def logout():
-    # remove the username from the session if it's there
-    session.pop('phonenumber', None)
-    return redirect(url_for('index'))
 
 # set the secret key.  keep this really secret:
 app.secret_key = 'A0Zr98j/3yX R~XHH!jmN]LWX/,?RT'
-
-#@app.route('/', methods=['GET', 'POST'])
-def hello_monkey():
-    message = ''
-    number = request.values.get('From', None)
-    body = request.values.get('Body', None)
-    action = json.loads(body)
-    if not number in newcl.numbers.keys():
-        message = newcl.newConnection(number, action['host'],
-                action['username'], action['password'])
-        message = newcl.sendMessage(number, "date")
-    else:
-        if action['command'] == 'logout':
-            newcl.logout(number)
-        else:
-            message = newcl.sendMessage(number, action['command'])
-    resp = twilio.twiml.Response()
-    resp.message(message)
-    return str(resp)
 if __name__ == '__main__':
     app.run(debug=True)
-
