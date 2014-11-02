@@ -136,7 +136,7 @@ def index():
         threads[phonenumber] = Thread(target=run, args= (queues[phonenumber], host, port, username, password, phonenumber))
         #Login the user
         threads[phonenumber].start()
-        #return "Hello, Customer"
+        return "Hello, Customer"
     else:
         message = request.values.get('Body', None)
         print message  
