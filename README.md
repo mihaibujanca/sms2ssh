@@ -10,5 +10,6 @@ It is just as simple as sending an sms to +44 113 320 2312 with the following to
             "password":"your_password",
             "encr":false"}
 Then you can send comands: 
-date
-
+cd MYDIR
+cd MYSUBDIR
+wisecow
